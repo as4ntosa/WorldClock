@@ -36,8 +36,30 @@ function parseRssItems(xml, limit = 5) {
   return items;
 }
 
+const SONG_POOL = {
+  sad: [
+    { title: 'Here Comes the Sun', artist: 'The Beatles', youtubeId: 'KQetemT1sWc', reason: 'A gentle reminder that brighter days are always ahead, even after the hardest times.' },
+    { title: 'Three Little Birds', artist: 'Bob Marley', youtubeId: 'zaGUr6wzyT8', reason: 'Bob Marley\'s warm reassurance that every little thing is gonna be alright.' },
+    { title: 'Happy', artist: 'Pharrell Williams', youtubeId: 'ZbZSe6N_BXs', reason: 'An infectious beat that makes it impossible not to smile and move your body.' },
+    { title: 'Don\'t Stop Me Now', artist: 'Queen', youtubeId: 'HgzGwKwLmgM', reason: 'Pure joyful energy from Freddie Mercury to lift your spirits sky-high.' }
+  ],
+  angry: [
+    { title: 'Don\'t Worry Be Happy', artist: 'Bobby McFerrin', youtubeId: 'd-diB65scQU', reason: 'A soothing whistle and carefree melody to help you let go of frustration.' },
+    { title: 'Walking on Sunshine', artist: 'Katrina & the Waves', youtubeId: 'iPUmE-tne5U', reason: 'Bright, upbeat energy to transform tension into pure positive vibes.' },
+    { title: 'Best Day of My Life', artist: 'American Authors', youtubeId: 'Y66j_BUCBMY', reason: 'An anthem to remind you that today can still be amazing despite the frustration.' },
+    { title: 'Send Me on My Way', artist: 'Rusted Root', youtubeId: 'IGMabBGydC0', reason: 'A feel-good rhythm that channels your energy into something uplifting.' }
+  ],
+  happy: [
+    { title: 'Good as Hell', artist: 'Lizzo', youtubeId: 'SmbmeOgWsqE', reason: 'Celebrate your great mood with Lizzo\'s empowering anthem of self-love.' },
+    { title: 'Uptown Funk', artist: 'Bruno Mars', youtubeId: 'OPf0YbXqDm0', reason: 'Keep the good times rolling with this irresistible funk groove.' },
+    { title: 'Shake It Off', artist: 'Taylor Swift', youtubeId: 'nfWlot6h_JM', reason: 'Match your happy energy with Taylor\'s carefree, dance-it-out anthem.' },
+    { title: 'Can\'t Stop the Feeling!', artist: 'Justin Timberlake', youtubeId: 'ru0K8uYEZWw', reason: 'Pure sunshine in song form to keep your happiness going all day.' }
+  ]
+};
+
 app.get('/api/lookup', async (req, res) => {
   const city = req.query.city;
+  const mood = req.query.mood;
   if (!city) {
     return res.status(400).json({ error: 'City is required.' });
   }
@@ -110,6 +132,13 @@ app.get('/api/lookup', async (req, res) => {
         }));
     }
 
+    // Pick a song based on mood
+    let song = null;
+    if (mood && SONG_POOL[mood]) {
+      const pool = SONG_POOL[mood];
+      song = pool[Math.floor(Math.random() * pool.length)];
+    }
+
     res.json({
       displayName: display_name,
       lat: parseFloat(lat),
@@ -118,7 +147,8 @@ app.get('/api/lookup', async (req, res) => {
       weather,
       airQuality,
       news,
-      restaurants
+      restaurants,
+      song
     });
   } catch (err) {
     console.error('Lookup error:', err);

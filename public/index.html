@@ -125,6 +125,127 @@
       min-height: 1.3em;
     }
 
+    /* Mood selector */
+    .mood-label {
+      text-align: left;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #374151;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .mood-options {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    .mood-btn {
+      flex: 1;
+      padding: 0.6rem 0.4rem;
+      border: 1.5px solid #d1d5db;
+      border-radius: 10px;
+      background: #f9fafb;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .mood-btn:hover {
+      border-color: #4f46e5;
+      background: #eef2ff;
+    }
+
+    .mood-btn.selected {
+      border-color: #4f46e5;
+      background: #eef2ff;
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+    }
+
+    .mood-btn .mood-emoji {
+      font-size: 1.6rem;
+      display: block;
+    }
+
+    .mood-btn .mood-text {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: #6b7280;
+      margin-top: 0.2rem;
+    }
+
+    /* Now Playing card */
+    .now-playing {
+      margin-top: 1rem;
+      background: #fff;
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-align: left;
+    }
+
+    .now-playing-icon {
+      font-size: 2rem;
+      line-height: 1;
+      animation: pulse 1.5s ease infinite;
+    }
+
+    .now-playing-info {
+      flex: 1;
+    }
+
+    .now-playing-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .now-playing-artist {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-top: 0.1rem;
+    }
+
+    .now-playing-reason {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 0.3rem;
+      line-height: 1.4;
+      font-style: italic;
+    }
+
+    .now-playing-toggle {
+      padding: 0.4rem 0.8rem;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .now-playing-toggle:hover {
+      border-color: #4f46e5;
+    }
+
+    #youtube-player {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
     /* ── Display Screen ── */
     #display-screen {
       max-width: 900px;
@@ -414,6 +535,21 @@
         <input type="text" id="name-input" placeholder="e.g. Alexis" required autocomplete="off">
         <label for="city-input">City</label>
         <input type="text" id="city-input" placeholder="e.g. Tokyo" required autocomplete="off">
+        <p class="mood-label">How are you feeling?</p>
+        <div class="mood-options">
+          <div class="mood-btn" data-mood="happy">
+            <span class="mood-emoji">😊</span>
+            <span class="mood-text">Happy</span>
+          </div>
+          <div class="mood-btn" data-mood="sad">
+            <span class="mood-emoji">😢</span>
+            <span class="mood-text">Sad</span>
+          </div>
+          <div class="mood-btn" data-mood="angry">
+            <span class="mood-emoji">😠</span>
+            <span class="mood-text">Angry</span>
+          </div>
+        </div>
         <button type="submit">Submit</button>
         <p id="error-msg"></p>
       </form>
@@ -459,6 +595,17 @@
       </div>
     </div>
 
+    <div class="now-playing" id="now-playing" style="display:none;">
+      <span class="now-playing-icon" id="np-icon">🎵</span>
+      <div class="now-playing-info">
+        <p class="now-playing-title" id="np-title"></p>
+        <p class="now-playing-artist" id="np-artist"></p>
+        <p class="now-playing-reason" id="np-reason"></p>
+      </div>
+      <button class="now-playing-toggle" id="np-toggle">⏸️</button>
+    </div>
+    <div id="youtube-player"></div>
+
     <div id="map-container">
       <div id="map"></div>
     </div>
@@ -474,6 +621,18 @@
 
     let tickInterval = null;
     let mapInstance = null;
+    let selectedMood = null;
+    let ytPlayer = null;
+    let isPlaying = false;
+
+    // Mood selector
+    document.querySelectorAll('.mood-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedMood = btn.dataset.mood;
+      });
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -488,14 +647,16 @@
       btn.textContent = 'Loading...';
 
       try {
-        const res = await fetch(`/api/lookup?city=${encodeURIComponent(city)}`);
+        if (!selectedMood) throw new Error('Please select a mood.');
+
+        const params = new URLSearchParams({ city, mood: selectedMood });
+        const res = await fetch(`/api/lookup?${params}`);
         const data = await res.json();
 
         if (!res.ok) throw new Error(data.error);
 
-        // If timezone API failed, estimate from longitude (rough but functional)
         const tz = data.timeZone || estimateTimezone(data.lon);
-        showDisplay(name, data.displayName, tz, data.lat, data.lon, data.weather, data.airQuality, data.news, data.restaurants);
+        showDisplay(name, data.displayName, tz, data.lat, data.lon, data.weather, data.airQuality, data.news, data.restaurants, data.song);
       } catch (err) {
         errorMsg.textContent = err.message;
       } finally {
@@ -546,7 +707,7 @@
       return { label: 'Hazardous', color: '#7f1d1d' };
     }
 
-    function showDisplay(name, displayName, timeZone, lat, lon, weather, airQuality, news, restaurants) {
+    function showDisplay(name, displayName, timeZone, lat, lon, weather, airQuality, news, restaurants, song) {
       formScreen.classList.remove('active');
       displayScreen.classList.add('active');
 
@@ -623,6 +784,25 @@
         restEl.innerHTML = '<h2>Nearby Restaurants</h2><p style="font-size:0.85rem;color:#9ca3af;">No restaurants found.</p>';
       }
 
+      // Render now playing
+      const npEl = document.getElementById('now-playing');
+      const ytEl = document.getElementById('youtube-player');
+      if (song) {
+        document.getElementById('np-title').textContent = song.title;
+        document.getElementById('np-artist').textContent = song.artist;
+        document.getElementById('np-reason').textContent = song.reason;
+        npEl.style.display = 'flex';
+
+        // Embed YouTube iframe for audio playback
+        ytEl.innerHTML = `<iframe id="yt-iframe" width="1" height="1" src="https://www.youtube.com/embed/${song.youtubeId}?autoplay=1&enablejsapi=1&loop=1&playlist=${song.youtubeId}" frameborder="0" allow="autoplay" allowfullscreen></iframe>`;
+        isPlaying = true;
+        document.getElementById('np-toggle').textContent = '⏸️';
+        document.getElementById('np-icon').style.animationPlayState = 'running';
+      } else {
+        npEl.style.display = 'none';
+        ytEl.innerHTML = '';
+      }
+
       // Render map
       if (mapInstance) {
         mapInstance.remove();
@@ -682,9 +862,29 @@
       tickInterval = setInterval(tick, 1000);
     }
 
+    // Play/pause toggle
+    document.getElementById('np-toggle').addEventListener('click', () => {
+      const iframe = document.getElementById('yt-iframe');
+      if (!iframe) return;
+      if (isPlaying) {
+        iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+        document.getElementById('np-toggle').textContent = '▶️';
+        document.getElementById('np-icon').style.animationPlayState = 'paused';
+      } else {
+        iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+        document.getElementById('np-toggle').textContent = '⏸️';
+        document.getElementById('np-icon').style.animationPlayState = 'running';
+      }
+      isPlaying = !isPlaying;
+    });
+
     document.getElementById('back-btn').addEventListener('click', () => {
       clearInterval(tickInterval);
       if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+      document.getElementById('youtube-player').innerHTML = '';
+      document.getElementById('now-playing').style.display = 'none';
+      selectedMood = null;
+      document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
       displayScreen.classList.remove('active');
       formScreen.classList.add('active');
     });
