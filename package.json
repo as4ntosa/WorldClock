@@ -1,0 +1,12 @@
+{
+  "name": "worldclock",
+  "version": "1.0.0",
+  "description": "World clock greeting app with weather",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

@@ -218,38 +218,12 @@
       btn.textContent = 'Loading...';
 
       try {
-        // 1. Geocode city using Nominatim
-        const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`;
-        const geoRes = await fetch(geoUrl, {
-          headers: { 'Accept': 'application/json', 'User-Agent': 'WorldClockGreetingApp/1.0' }
-        });
+        const res = await fetch(`/api/lookup?city=${encodeURIComponent(city)}`);
+        const data = await res.json();
 
-        if (!geoRes.ok) throw new Error('Geocoding request failed. Please try again.');
-        const geoData = await geoRes.json();
+        if (!res.ok) throw new Error(data.error);
 
-        if (!geoData.length) {
-          throw new Error(`Could not find a city named "${city}".`);
-        }
-
-        const { lat, lon, display_name } = geoData[0];
-
-        // 2. Get timezone and weather in parallel
-        const [timeRes, weatherRes] = await Promise.all([
-          fetch(`https://timeapi.io/api/time/current/coordinate?latitude=${lat}&longitude=${lon}`),
-          fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&temperature_unit=fahrenheit&wind_speed_unit=mph`)
-        ]);
-
-        if (!timeRes.ok) throw new Error('Could not fetch time data. Please try again.');
-        const timeData = await timeRes.json();
-
-        let weather = null;
-        if (weatherRes.ok) {
-          const wd = await weatherRes.json();
-          weather = wd.current;
-        }
-
-        // 3. Show display screen
-        showDisplay(name, display_name, timeData.timeZone, weather);
+        showDisplay(name, data.displayName, data.timeZone, data.weather);
       } catch (err) {
         errorMsg.textContent = err.message;
       } finally {
