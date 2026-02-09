@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -125,7 +127,7 @@
 
     /* ── Display Screen ── */
     #display-screen {
-      max-width: 640px;
+      max-width: 900px;
       margin: 0 auto;
       animation: fadeIn 0.5s ease;
     }
@@ -168,7 +170,7 @@
     /* ── Info Cards Row ── */
     .info-row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 1rem;
       margin-top: 1rem;
     }
@@ -224,6 +226,52 @@
       margin-top: 0.2rem;
     }
 
+    .aqi-bar {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .aqi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.35rem;
+    }
+
+    .aqi-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .aqi-badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 6px;
+      color: #fff;
+    }
+
+    .aqi-track {
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .aqi-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    .aqi-details {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      margin-top: 0.3rem;
+    }
+
     /* News card */
     .news-card {
       max-height: 220px;
@@ -267,6 +315,54 @@
       margin-top: 0.15rem;
     }
 
+    /* Restaurant card */
+    .restaurant-card {
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .restaurant-card::-webkit-scrollbar {
+      width: 4px;
+    }
+    .restaurant-card::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 4px;
+    }
+
+    .rest-item {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .rest-item:last-child {
+      border-bottom: none;
+    }
+
+    .rest-name {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #1a1a2e;
+    }
+
+    .rest-cuisine {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      margin-top: 0.1rem;
+    }
+
+    /* Map */
+    #map-container {
+      margin-top: 1rem;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    }
+
+    #map {
+      height: 300px;
+      width: 100%;
+    }
+
     /* Back button */
     #back-btn {
       margin-top: 1.5rem;
@@ -293,7 +389,7 @@
     }
 
     /* ── Responsive ── */
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
       .info-row {
         grid-template-columns: 1fr;
       }
@@ -344,10 +440,27 @@
             <p id="weather-extra"></p>
           </div>
         </div>
+        <div class="aqi-bar" id="aqi-section" style="display:none;">
+          <div class="aqi-header">
+            <span class="aqi-label">Air Quality Index</span>
+            <span class="aqi-badge" id="aqi-badge"></span>
+          </div>
+          <div class="aqi-track">
+            <div class="aqi-fill" id="aqi-fill"></div>
+          </div>
+          <p class="aqi-details" id="aqi-details"></p>
+        </div>
       </div>
       <div class="card news-card" id="news">
         <h2>Local News</h2>
       </div>
+      <div class="card restaurant-card" id="restaurants">
+        <h2>Nearby Restaurants</h2>
+      </div>
+    </div>
+
+    <div id="map-container">
+      <div id="map"></div>
     </div>
 
     <button id="back-btn">Back</button>
@@ -360,6 +473,7 @@
     const displayScreen = document.getElementById('display-screen');
 
     let tickInterval = null;
+    let mapInstance = null;
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -381,7 +495,7 @@
 
         // If timezone API failed, estimate from longitude (rough but functional)
         const tz = data.timeZone || estimateTimezone(data.lon);
-        showDisplay(name, data.displayName, tz, data.weather, data.news);
+        showDisplay(name, data.displayName, tz, data.lat, data.lon, data.weather, data.airQuality, data.news, data.restaurants);
       } catch (err) {
         errorMsg.textContent = err.message;
       } finally {
@@ -423,7 +537,16 @@
       return `${days}d ago`;
     }
 
-    function showDisplay(name, displayName, timeZone, weather, news) {
+    function getAqiInfo(aqi) {
+      if (aqi <= 50) return { label: 'Good', color: '#22c55e' };
+      if (aqi <= 100) return { label: 'Moderate', color: '#eab308' };
+      if (aqi <= 150) return { label: 'Unhealthy (SG)', color: '#f97316' };
+      if (aqi <= 200) return { label: 'Unhealthy', color: '#ef4444' };
+      if (aqi <= 300) return { label: 'Very Unhealthy', color: '#a855f7' };
+      return { label: 'Hazardous', color: '#7f1d1d' };
+    }
+
+    function showDisplay(name, displayName, timeZone, lat, lon, weather, airQuality, news, restaurants) {
       formScreen.classList.remove('active');
       displayScreen.classList.add('active');
 
@@ -458,6 +581,83 @@
           `Humidity ${weather.relative_humidity_2m}%  ·  Wind ${Math.round(weather.wind_speed_10m)} mph`;
       }
 
+      // Render AQI
+      const aqiSection = document.getElementById('aqi-section');
+      if (airQuality && airQuality.us_aqi != null) {
+        const aqi = airQuality.us_aqi;
+        const { label, color } = getAqiInfo(aqi);
+        const pct = Math.min((aqi / 500) * 100, 100);
+
+        const badge = document.getElementById('aqi-badge');
+        badge.textContent = `${aqi} · ${label}`;
+        badge.style.background = color;
+
+        const fill = document.getElementById('aqi-fill');
+        fill.style.width = `${pct}%`;
+        fill.style.background = color;
+
+        const details = document.getElementById('aqi-details');
+        const parts = [];
+        if (airQuality.pm2_5 != null) parts.push(`PM2.5: ${airQuality.pm2_5} \u03bcg/m\u00b3`);
+        if (airQuality.pm10 != null) parts.push(`PM10: ${airQuality.pm10} \u03bcg/m\u00b3`);
+        details.textContent = parts.join('  ·  ');
+
+        aqiSection.style.display = 'block';
+      } else {
+        aqiSection.style.display = 'none';
+      }
+
+      // Render restaurants list
+      const restEl = document.getElementById('restaurants');
+      if (restaurants && restaurants.length) {
+        const heading = '<h2>Nearby Restaurants</h2>';
+        const items = restaurants.map(r => {
+          const cuisine = r.cuisine ? r.cuisine.replace(/;/g, ', ') : '';
+          return `<div class="rest-item">
+            <div class="rest-name">${r.name.replace(/</g, '&lt;')}</div>
+            ${cuisine ? `<div class="rest-cuisine">${cuisine}</div>` : ''}
+          </div>`;
+        }).join('');
+        restEl.innerHTML = heading + items;
+      } else {
+        restEl.innerHTML = '<h2>Nearby Restaurants</h2><p style="font-size:0.85rem;color:#9ca3af;">No restaurants found.</p>';
+      }
+
+      // Render map
+      if (mapInstance) {
+        mapInstance.remove();
+        mapInstance = null;
+      }
+      setTimeout(() => {
+        mapInstance = L.map('map').setView([lat, lon], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          maxZoom: 19
+        }).addTo(mapInstance);
+
+        // City center marker
+        L.marker([lat, lon])
+          .addTo(mapInstance)
+          .bindPopup(`<strong>${displayName.split(',')[0]}</strong>`)
+          .openPopup();
+
+        // Restaurant markers
+        if (restaurants && restaurants.length) {
+          const restIcon = L.divIcon({
+            html: '<div style="font-size:1.4rem;">🍽️</div>',
+            className: '',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+          restaurants.forEach(r => {
+            const cuisine = r.cuisine ? ` (${r.cuisine.replace(/;/g, ', ')})` : '';
+            L.marker([r.lat, r.lon], { icon: restIcon })
+              .addTo(mapInstance)
+              .bindPopup(`<strong>${r.name}</strong>${cuisine}`);
+          });
+        }
+      }, 100);
+
       function tick() {
         const now = new Date();
         const options = { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
@@ -484,6 +684,7 @@
 
     document.getElementById('back-btn').addEventListener('click', () => {
       clearInterval(tickInterval);
+      if (mapInstance) { mapInstance.remove(); mapInstance = null; }
       displayScreen.classList.remove('active');
       formScreen.classList.add('active');
     });

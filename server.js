@@ -57,11 +57,18 @@ app.get('/api/lookup', async (req, res) => {
     const { lat, lon, display_name } = geoData[0];
 
     // 2. Get timezone, weather, and news in parallel (each independent)
-    const [timeRes, weatherRes, newsRes] = await Promise.all([
+    const overpassQuery = `[out:json][timeout:10];node["amenity"="restaurant"](around:1000,${lat},${lon});out 8;`;
+    const [timeRes, weatherRes, aqiRes, newsRes, restaurantRes] = await Promise.all([
       safeFetch(`https://timeapi.io/api/time/current/coordinate?latitude=${lat}&longitude=${lon}`),
       safeFetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&temperature_unit=fahrenheit&wind_speed_unit=mph`),
+      safeFetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm2_5,pm10`),
       safeFetch(`https://news.google.com/rss/search?q=${encodeURIComponent(city)}&hl=en-US&gl=US&ceid=US:en`, {
         headers: { 'User-Agent': 'WorldClockGreetingApp/1.0' }
+      }),
+      safeFetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(overpassQuery)}`
       })
     ]);
 
@@ -78,10 +85,29 @@ app.get('/api/lookup', async (req, res) => {
       weather = wd.current;
     }
 
+    let airQuality = null;
+    if (aqiRes && aqiRes.ok) {
+      const aq = await aqiRes.json();
+      airQuality = aq.current;
+    }
+
     let news = [];
     if (newsRes && newsRes.ok) {
       const rssXml = await newsRes.text();
       news = parseRssItems(rssXml, 5);
+    }
+
+    let restaurants = [];
+    if (restaurantRes && restaurantRes.ok) {
+      const rd = await restaurantRes.json();
+      restaurants = (rd.elements || [])
+        .filter(e => e.tags && e.tags.name)
+        .map(e => ({
+          name: e.tags.name,
+          cuisine: e.tags.cuisine || null,
+          lat: e.lat,
+          lon: e.lon
+        }));
     }
 
     res.json({
@@ -90,7 +116,9 @@ app.get('/api/lookup', async (req, res) => {
       lon: parseFloat(lon),
       timeZone,
       weather,
-      news
+      airQuality,
+      news,
+      restaurants
     });
   } catch (err) {
     console.error('Lookup error:', err);
