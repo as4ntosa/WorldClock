@@ -3,166 +3,306 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>World Clock Greeting</title>
+  <title>World Clock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #1a1a2e;
-      color: #eee;
+      background: #f0f2f5;
+      color: #1a1a2e;
     }
 
     .screen {
       display: none;
       text-align: center;
       padding: 2rem;
+      width: 100%;
     }
 
     .screen.active {
       display: block;
     }
 
-    /* Form screen */
-    #form-screen h1 {
-      font-size: 2rem;
-      margin-bottom: 2rem;
+    /* ── Form Screen ── */
+    #form-screen {
+      max-width: 440px;
+      margin: 0 auto;
     }
 
-    #form-screen form {
+    .form-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2.5rem 2rem 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 30px rgba(0,0,0,0.06);
+    }
+
+    .form-card h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 0.3rem;
+    }
+
+    .form-card .subtitle {
+      font-size: 0.9rem;
+      color: #6b7280;
+      margin-bottom: 1.8rem;
+    }
+
+    #user-form {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      width: 320px;
+      gap: 0.85rem;
     }
 
-    #form-screen input {
-      padding: 0.75rem 1rem;
-      border: 1px solid #444;
-      border-radius: 8px;
-      background: #16213e;
-      color: #eee;
-      font-size: 1rem;
+    #user-form label {
+      text-align: left;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #374151;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    #user-form input {
+      padding: 0.7rem 0.9rem;
+      border: 1.5px solid #d1d5db;
+      border-radius: 10px;
+      background: #f9fafb;
+      color: #1a1a2e;
+      font-family: inherit;
+      font-size: 0.95rem;
       outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    #form-screen input:focus {
-      border-color: #e94560;
+    #user-form input:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+      background: #fff;
     }
 
-    #form-screen button {
+    #user-form input::placeholder {
+      color: #9ca3af;
+    }
+
+    #user-form button {
+      margin-top: 0.4rem;
       padding: 0.75rem;
       border: none;
-      border-radius: 8px;
-      background: #e94560;
+      border-radius: 10px;
+      background: #4f46e5;
       color: #fff;
-      font-size: 1rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
       cursor: pointer;
+      transition: background 0.2s;
     }
 
-    #form-screen button:hover {
-      background: #c73a52;
+    #user-form button:hover {
+      background: #4338ca;
     }
 
-    #form-screen button:disabled {
-      opacity: 0.6;
+    #user-form button:disabled {
+      opacity: 0.55;
       cursor: not-allowed;
     }
 
     #error-msg {
-      color: #e94560;
-      font-size: 0.9rem;
-      min-height: 1.4em;
+      color: #dc2626;
+      font-size: 0.85rem;
+      min-height: 1.3em;
     }
 
-    /* Display screen */
+    /* ── Display Screen ── */
     #display-screen {
-      animation: fadeIn 0.6s ease;
+      max-width: 640px;
+      margin: 0 auto;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .hero-card {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff;
+      border-radius: 20px;
+      padding: 2.5rem 2rem 2rem;
+      box-shadow: 0 4px 20px rgba(79,70,229,0.25);
     }
 
     #greeting {
-      font-size: 2.2rem;
+      font-size: 1.5rem;
       font-weight: 600;
-      margin-bottom: 0.5rem;
+      opacity: 0.95;
     }
 
     #city-label {
-      font-size: 1.1rem;
-      color: #aaa;
-      margin-bottom: 2rem;
+      font-size: 0.85rem;
+      opacity: 0.7;
+      margin-top: 0.3rem;
+      margin-bottom: 1.5rem;
     }
 
     #clock {
-      font-size: 5rem;
+      font-size: 4rem;
       font-weight: 300;
       font-variant-numeric: tabular-nums;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.03em;
+      line-height: 1.1;
     }
 
     #date-label {
-      font-size: 1rem;
-      color: #aaa;
-      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      opacity: 0.7;
+      margin-top: 0.4rem;
     }
 
-    #weather {
-      margin-top: 2rem;
-      padding: 1.2rem 2rem;
-      background: #16213e;
-      border-radius: 12px;
-      display: inline-flex;
-      align-items: center;
+    /* ── Info Cards Row ── */
+    .info-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 1.2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+      text-align: left;
+    }
+
+    .card h2 {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.8rem;
+    }
+
+    /* Weather card */
+    #weather {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
     }
 
     #weather-icon {
-      font-size: 2.5rem;
+      font-size: 2.2rem;
       line-height: 1;
     }
 
     #weather-details {
-      text-align: left;
+      flex: 1;
     }
 
     #weather-temp {
-      font-size: 1.6rem;
-      font-weight: 500;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1a1a2e;
     }
 
     #weather-desc {
-      font-size: 0.9rem;
-      color: #aaa;
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-top: 0.1rem;
     }
 
     #weather-extra {
-      font-size: 0.8rem;
-      color: #777;
+      font-size: 0.75rem;
+      color: #9ca3af;
       margin-top: 0.2rem;
     }
 
+    /* News card */
+    .news-card {
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .news-card::-webkit-scrollbar {
+      width: 4px;
+    }
+    .news-card::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 4px;
+    }
+
+    .news-item {
+      padding: 0.55rem 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .news-item:last-child {
+      border-bottom: none;
+    }
+
+    .news-item a {
+      color: #1a1a2e;
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 500;
+      line-height: 1.4;
+      display: block;
+      transition: color 0.15s;
+    }
+
+    .news-item a:hover {
+      color: #4f46e5;
+    }
+
+    .news-meta {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      margin-top: 0.15rem;
+    }
+
+    /* Back button */
     #back-btn {
-      margin-top: 2.5rem;
-      padding: 0.5rem 1.5rem;
-      border: 1px solid #444;
-      border-radius: 8px;
-      background: transparent;
-      color: #aaa;
-      font-size: 0.9rem;
+      margin-top: 1.5rem;
+      padding: 0.55rem 1.6rem;
+      border: 1.5px solid #d1d5db;
+      border-radius: 10px;
+      background: #fff;
+      color: #6b7280;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
       cursor: pointer;
+      transition: all 0.2s;
     }
 
     #back-btn:hover {
-      border-color: #e94560;
-      color: #eee;
+      border-color: #4f46e5;
+      color: #4f46e5;
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
+      from { opacity: 0; transform: translateY(16px); }
       to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .info-row {
+        grid-template-columns: 1fr;
+      }
+      #clock {
+        font-size: 3rem;
+      }
+      .hero-card {
+        padding: 2rem 1.5rem 1.5rem;
+      }
     }
   </style>
 </head>
@@ -170,30 +310,46 @@
 
   <!-- Form Screen -->
   <div id="form-screen" class="screen active">
-    <h1>World Clock</h1>
-    <form id="user-form">
-      <input type="text" id="name-input" placeholder="Your name" required autocomplete="off">
-      <input type="text" id="city-input" placeholder="City (e.g. Tokyo)" required autocomplete="off">
-      <button type="submit">Submit</button>
-      <p id="error-msg"></p>
-    </form>
+    <div class="form-card">
+      <h1>World Clock</h1>
+      <p class="subtitle">Enter your details to see the local time, weather, and news.</p>
+      <form id="user-form">
+        <label for="name-input">Name</label>
+        <input type="text" id="name-input" placeholder="e.g. Alexis" required autocomplete="off">
+        <label for="city-input">City</label>
+        <input type="text" id="city-input" placeholder="e.g. Tokyo" required autocomplete="off">
+        <button type="submit">Submit</button>
+        <p id="error-msg"></p>
+      </form>
+    </div>
   </div>
 
   <!-- Display Screen -->
   <div id="display-screen" class="screen">
-    <p id="greeting"></p>
-    <p id="city-label"></p>
-    <p id="clock"></p>
-    <p id="date-label"></p>
-    <div id="weather">
-      <span id="weather-icon"></span>
-      <div id="weather-details">
-        <p id="weather-temp"></p>
-        <p id="weather-desc"></p>
-        <p id="weather-extra"></p>
+    <div class="hero-card">
+      <p id="greeting"></p>
+      <p id="city-label"></p>
+      <p id="clock"></p>
+      <p id="date-label"></p>
+    </div>
+
+    <div class="info-row">
+      <div class="card" id="weather-card">
+        <h2>Weather</h2>
+        <div id="weather">
+          <span id="weather-icon"></span>
+          <div id="weather-details">
+            <p id="weather-temp"></p>
+            <p id="weather-desc"></p>
+            <p id="weather-extra"></p>
+          </div>
+        </div>
+      </div>
+      <div class="card news-card" id="news">
+        <h2>Local News</h2>
       </div>
     </div>
-    <br>
+
     <button id="back-btn">Back</button>
   </div>
 
@@ -223,7 +379,9 @@
 
         if (!res.ok) throw new Error(data.error);
 
-        showDisplay(name, data.displayName, data.timeZone, data.weather);
+        // If timezone API failed, estimate from longitude (rough but functional)
+        const tz = data.timeZone || estimateTimezone(data.lon);
+        showDisplay(name, data.displayName, tz, data.weather, data.news);
       } catch (err) {
         errorMsg.textContent = err.message;
       } finally {
@@ -246,15 +404,51 @@
       95: ['Thunderstorm', '⛈️'], 96: ['Thunderstorm w/ hail', '⛈️'], 99: ['Severe thunderstorm', '⛈️'],
     };
 
-    function showDisplay(name, displayName, timeZone, weather) {
+    function estimateTimezone(lon) {
+      // Map longitude to a UTC offset timezone as a fallback
+      const offset = Math.round(lon / 15);
+      const sign = offset >= 0 ? '+' : '-';
+      const abs = Math.abs(offset).toString().padStart(2, '0');
+      return `Etc/GMT${offset <= 0 ? '+' : '-'}${Math.abs(offset)}`;
+    }
+
+    function timeAgo(date) {
+      const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+      if (seconds < 60) return 'just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      return `${days}d ago`;
+    }
+
+    function showDisplay(name, displayName, timeZone, weather, news) {
       formScreen.classList.remove('active');
       displayScreen.classList.add('active');
 
-      const cityLabel = document.getElementById('city-label');
-      cityLabel.textContent = displayName;
+      document.getElementById('city-label').textContent = displayName;
+
+      // Render news
+      const newsEl = document.getElementById('news');
+      if (news && news.length) {
+        const heading = '<h2>Local News</h2>';
+        const items = news.map(n => {
+          const ago = n.pubDate ? timeAgo(new Date(n.pubDate)) : '';
+          const source = n.source ? n.source : '';
+          const meta = [source, ago].filter(Boolean).join(' · ');
+          const safeTitle = n.title.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<div class="news-item">
+            <a href="${n.link}" target="_blank" rel="noopener">${safeTitle}</a>
+            ${meta ? `<div class="news-meta">${meta}</div>` : ''}
+          </div>`;
+        }).join('');
+        newsEl.innerHTML = heading + items;
+      } else {
+        newsEl.innerHTML = '<h2>Local News</h2><p style="font-size:0.85rem;color:#9ca3af;">No news found.</p>';
+      }
 
       // Render weather
-      const weatherEl = document.getElementById('weather');
       if (weather) {
         const [desc, icon] = WMO_WEATHER[weather.weather_code] || ['Unknown', '🌡️'];
         document.getElementById('weather-icon').textContent = icon;
@@ -262,9 +456,6 @@
         document.getElementById('weather-desc').textContent = desc;
         document.getElementById('weather-extra').textContent =
           `Humidity ${weather.relative_humidity_2m}%  ·  Wind ${Math.round(weather.wind_speed_10m)} mph`;
-        weatherEl.style.display = 'inline-flex';
-      } else {
-        weatherEl.style.display = 'none';
       }
 
       function tick() {
