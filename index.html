@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World Clock Greeting</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a2e;
+      color: #eee;
+    }
+
+    .screen {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    /* Form screen */
+    #form-screen h1 {
+      font-size: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    #form-screen form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 320px;
+    }
+
+    #form-screen input {
+      padding: 0.75rem 1rem;
+      border: 1px solid #444;
+      border-radius: 8px;
+      background: #16213e;
+      color: #eee;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    #form-screen input:focus {
+      border-color: #e94560;
+    }
+
+    #form-screen button {
+      padding: 0.75rem;
+      border: none;
+      border-radius: 8px;
+      background: #e94560;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    #form-screen button:hover {
+      background: #c73a52;
+    }
+
+    #form-screen button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #error-msg {
+      color: #e94560;
+      font-size: 0.9rem;
+      min-height: 1.4em;
+    }
+
+    /* Display screen */
+    #display-screen {
+      animation: fadeIn 0.6s ease;
+    }
+
+    #greeting {
+      font-size: 2.2rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    #city-label {
+      font-size: 1.1rem;
+      color: #aaa;
+      margin-bottom: 2rem;
+    }
+
+    #clock {
+      font-size: 5rem;
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.05em;
+    }
+
+    #date-label {
+      font-size: 1rem;
+      color: #aaa;
+      margin-top: 0.5rem;
+    }
+
+    #weather {
+      margin-top: 2rem;
+      padding: 1.2rem 2rem;
+      background: #16213e;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    #weather-icon {
+      font-size: 2.5rem;
+      line-height: 1;
+    }
+
+    #weather-details {
+      text-align: left;
+    }
+
+    #weather-temp {
+      font-size: 1.6rem;
+      font-weight: 500;
+    }
+
+    #weather-desc {
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+
+    #weather-extra {
+      font-size: 0.8rem;
+      color: #777;
+      margin-top: 0.2rem;
+    }
+
+    #back-btn {
+      margin-top: 2.5rem;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid #444;
+      border-radius: 8px;
+      background: transparent;
+      color: #aaa;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    #back-btn:hover {
+      border-color: #e94560;
+      color: #eee;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Form Screen -->
+  <div id="form-screen" class="screen active">
+    <h1>World Clock</h1>
+    <form id="user-form">
+      <input type="text" id="name-input" placeholder="Your name" required autocomplete="off">
+      <input type="text" id="city-input" placeholder="City (e.g. Tokyo)" required autocomplete="off">
+      <button type="submit">Submit</button>
+      <p id="error-msg"></p>
+    </form>
+  </div>
+
+  <!-- Display Screen -->
+  <div id="display-screen" class="screen">
+    <p id="greeting"></p>
+    <p id="city-label"></p>
+    <p id="clock"></p>
+    <p id="date-label"></p>
+    <div id="weather">
+      <span id="weather-icon"></span>
+      <div id="weather-details">
+        <p id="weather-temp"></p>
+        <p id="weather-desc"></p>
+        <p id="weather-extra"></p>
+      </div>
+    </div>
+    <br>
+    <button id="back-btn">Back</button>
+  </div>
+
+  <script>
+    const form = document.getElementById('user-form');
+    const errorMsg = document.getElementById('error-msg');
+    const formScreen = document.getElementById('form-screen');
+    const displayScreen = document.getElementById('display-screen');
+
+    let tickInterval = null;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.textContent = '';
+
+      const name = document.getElementById('name-input').value.trim();
+      const city = document.getElementById('city-input').value.trim();
+      if (!name || !city) return;
+
+      const btn = form.querySelector('button');
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+
+      try {
+        // 1. Geocode city using Nominatim
+        const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`;
+        const geoRes = await fetch(geoUrl, {
+          headers: { 'Accept': 'application/json', 'User-Agent': 'WorldClockGreetingApp/1.0' }
+        });
+
+        if (!geoRes.ok) throw new Error('Geocoding request failed. Please try again.');
+        const geoData = await geoRes.json();
+
+        if (!geoData.length) {
+          throw new Error(`Could not find a city named "${city}".`);
+        }
+
+        const { lat, lon, display_name } = geoData[0];
+
+        // 2. Get timezone and weather in parallel
+        const [timeRes, weatherRes] = await Promise.all([
+          fetch(`https://timeapi.io/api/time/current/coordinate?latitude=${lat}&longitude=${lon}`),
+          fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&temperature_unit=fahrenheit&wind_speed_unit=mph`)
+        ]);
+
+        if (!timeRes.ok) throw new Error('Could not fetch time data. Please try again.');
+        const timeData = await timeRes.json();
+
+        let weather = null;
+        if (weatherRes.ok) {
+          const wd = await weatherRes.json();
+          weather = wd.current;
+        }
+
+        // 3. Show display screen
+        showDisplay(name, display_name, timeData.timeZone, weather);
+      } catch (err) {
+        errorMsg.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit';
+      }
+    });
+
+    const WMO_WEATHER = {
+      0: ['Clear sky', '☀️'],
+      1: ['Mainly clear', '🌤️'], 2: ['Partly cloudy', '⛅'], 3: ['Overcast', '☁️'],
+      45: ['Foggy', '🌫️'], 48: ['Icy fog', '🌫️'],
+      51: ['Light drizzle', '🌦️'], 53: ['Drizzle', '🌦️'], 55: ['Heavy drizzle', '🌧️'],
+      61: ['Light rain', '🌦️'], 63: ['Rain', '🌧️'], 65: ['Heavy rain', '🌧️'],
+      66: ['Freezing rain', '🌨️'], 67: ['Heavy freezing rain', '🌨️'],
+      71: ['Light snow', '🌨️'], 73: ['Snow', '❄️'], 75: ['Heavy snow', '❄️'],
+      77: ['Snow grains', '❄️'],
+      80: ['Light showers', '🌦️'], 81: ['Showers', '🌧️'], 82: ['Heavy showers', '🌧️'],
+      85: ['Light snow showers', '🌨️'], 86: ['Snow showers', '❄️'],
+      95: ['Thunderstorm', '⛈️'], 96: ['Thunderstorm w/ hail', '⛈️'], 99: ['Severe thunderstorm', '⛈️'],
+    };
+
+    function showDisplay(name, displayName, timeZone, weather) {
+      formScreen.classList.remove('active');
+      displayScreen.classList.add('active');
+
+      const cityLabel = document.getElementById('city-label');
+      cityLabel.textContent = displayName;
+
+      // Render weather
+      const weatherEl = document.getElementById('weather');
+      if (weather) {
+        const [desc, icon] = WMO_WEATHER[weather.weather_code] || ['Unknown', '🌡️'];
+        document.getElementById('weather-icon').textContent = icon;
+        document.getElementById('weather-temp').textContent = `${Math.round(weather.temperature_2m)}°F`;
+        document.getElementById('weather-desc').textContent = desc;
+        document.getElementById('weather-extra').textContent =
+          `Humidity ${weather.relative_humidity_2m}%  ·  Wind ${Math.round(weather.wind_speed_10m)} mph`;
+        weatherEl.style.display = 'inline-flex';
+      } else {
+        weatherEl.style.display = 'none';
+      }
+
+      function tick() {
+        const now = new Date();
+        const options = { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+        const timeStr = now.toLocaleTimeString('en-US', options);
+
+        const hourOptions = { timeZone, hour: 'numeric', hour12: false };
+        const hour = parseInt(now.toLocaleTimeString('en-US', hourOptions), 10);
+
+        let period;
+        if (hour >= 5 && hour < 12) period = 'morning';
+        else if (hour >= 12 && hour < 18) period = 'afternoon';
+        else period = 'evening';
+
+        document.getElementById('greeting').textContent = `Good ${period}, ${name}!`;
+        document.getElementById('clock').textContent = timeStr;
+
+        const dateOptions = { timeZone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('date-label').textContent = now.toLocaleDateString('en-US', dateOptions);
+      }
+
+      tick();
+      tickInterval = setInterval(tick, 1000);
+    }
+
+    document.getElementById('back-btn').addEventListener('click', () => {
+      clearInterval(tickInterval);
+      displayScreen.classList.remove('active');
+      formScreen.classList.add('active');
+    });
+  </script>
+
+</body>
+</html>
